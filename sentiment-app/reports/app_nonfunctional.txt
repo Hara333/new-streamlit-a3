@@ -1,0 +1,30 @@
+single user, word model: 0.67 s to the result
+PASSED
+tests/test_load.py::test_nf_l_02_concurrent_users_are_all_served[4] 4 concurrent users: median 6.75 s, slowest 9.75 s
+PASSED
+tests/test_load.py::test_nf_l_02_concurrent_users_are_all_served[8] 8 concurrent users: median 3.61 s, slowest 6.74 s
+PASSED
+rerun with every panel open: median 0.09 s, worst 0.10 s
+PASSED
+load seconds: fingpt_network 0.02, fingpt_network_sentfin_all 0.02, fingpt_network_sentfin_mistakes 0.02, fingpt_network_sentfin_grpo 0.02, dialogue_network 0.02, dialogue_network_fingpt 0.02, dialogue_network_fingpt_sentfin_mistakes 0.02, dialogue_network_fingpt_sentfin_all 0.02, dialogue_network_fingpt_sentfin_grpo 0.02, fingpt_linear 0.00, dialogue_linear 0.00, words_fingpt 0.02, words_sentfin 0.00, words_dialogue 0.02
+PASSED
+tests/test_nonfunctional.py::TestPerformance::test_nf_03_a_reading_without_the_encoder_takes_milliseconds network forward pass 0.21 ms, word reading 0.05 ms
+PASSED
+tests/test_nonfunctional.py::TestPerformance::test_nf_04_memory_for_all_fourteen_models_stays_small peak allocation while loading every model: 57 MB
+PASSED
+tests/test_nonfunctional.py::TestStoreAndCode::test_nf_05_store_fits_in_a_repository models/ is 22.6 MB
+PASSED
+tests/test_nonfunctional.py::TestStoreAndCode::test_nf_06_weights_are_loaded_without_unpickling_anything PASSED
+tests/test_nonfunctional.py::TestStoreAndCode::test_nf_07_no_credentials_hosts_or_project_paths_in_what_is_shipped PASSED
+tests/test_nonfunctional.py::TestStoreAndCode::test_nf_08_the_only_network_access_is_the_encoder_download PASSED
+tests/test_nonfunctional.py::TestStoreAndCode::test_nf_09_house_style_no_dashes_and_ascii_sources PASSED
+tests/test_nonfunctional.py::TestStoreAndCode::test_nf_10_theme_is_the_project_purple PASSED
+tests/test_nonfunctional.py::TestStoreAndCode::test_nf_11_requirements_set_lower_bounds_for_every_dependency PASSED
+tests/test_nonfunctional.py::TestMaintainabilityAndPortability::test_nf_12_sources_compile_and_declare_a_minimum_python minimum python by syntax: 3.6 (Streamlit itself needs 3.9 or later)
+PASSED
+tests/test_nonfunctional.py::TestMaintainabilityAndPortability::test_nf_13_cyclomatic_complexity_is_recorded_and_bounded most complex functions: network_figure 43, show_word_table 20, show_word_calculation 13, stage_rows 10, main 9
+PASSED
+tests/test_nonfunctional.py::TestMaintainabilityAndPortability::test_nf_14_static_security_scan_has_no_high_findings bandit findings: B615 MEDIUM line 101, B615 MEDIUM line 101
+PASSED
+tests/test_nonfunctional.py::TestMaintainabilityAndPortability::test_nf_15_lint_is_clean PASSED
+============================= 18 passed in 46.16s ==============================

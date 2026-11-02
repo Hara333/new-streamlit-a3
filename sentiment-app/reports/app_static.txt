@@ -1,0 +1,55 @@
+== radon cc (cyclomatic complexity, rank B and above)
+app.py
+    F 398:0 network_figure - F (43)
+    F 243:0 show_word_table - C (20)
+    F 337:0 show_word_calculation - C (13)
+    F 303:0 show_output_step - B (8)
+    F 226:0 show_reading - B (7)
+    F 43:0 fix_mojibake - B (6)
+    F 83:0 load_model - B (6)
+build_models.py
+    F 181:0 stage_rows - B (10)
+    F 327:0 main - B (9)
+    F 97:0 save_network - B (8)
+    F 210:0 rl_details - B (8)
+    F 82:0 network_arrays - B (7)
+    F 119:0 base_details - B (7)
+
+== radon mi (maintainability index)
+app.py - B (9.02)
+build_models.py - A (28.16)
+
+== radon raw
+app.py
+    LOC: 538
+    LLOC: 438
+    SLOC: 425
+    Comments: 12
+build_models.py
+    LOC: 362
+    LLOC: 256
+    SLOC: 305
+    Comments: 3
+
+== bandit
+>> Issue: [B615:huggingface_unsafe_download] Unsafe Hugging Face Hub download without revision pinning in from_pretrained()
+   Severity: Medium   Confidence: High
+   Location: ./app.py:101:11
+>> Issue: [B615:huggingface_unsafe_download] Unsafe Hugging Face Hub download without revision pinning in from_pretrained()
+   Severity: Medium   Confidence: High
+   Location: ./app.py:101:51
+	Total issues (by severity):
+		Low: 0
+		Medium: 2
+		High: 0
+	Total issues (by confidence):
+		Low: 0
+		Medium: 0
+		High: 2
+
+== vermin
+Minimum required versions: 3.6
+Incompatible versions:     2.x
+
+== ruff
+All checks passed!

@@ -1,0 +1,38 @@
+# Continuous integration of the app: the quick tests on every push and pull request, the whole
+# suite (interface, non-functional, load) on main. The real encoder is never downloaded here.
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  quick:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - run: pip install -r requirements-test.txt
+      - run: pytest -m "not slow" -q
+
+  full:
+    if: github.ref == 'refs/heads/main'
+    needs: quick
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements-test.txt
+      - run: playwright install --with-deps chromium
+      - run: pytest -q --cov=. --cov-branch --cov-report=term
+      - run: python -m bandit -q app.py build_models.py
+      - run: python -m ruff check --select E,F,W --ignore E501,E741 app.py build_models.py tests
