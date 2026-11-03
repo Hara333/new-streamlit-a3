@@ -1,5 +1,15 @@
 [theme]
+base = "light"
 primaryColor = "#7c4df5"
+backgroundColor = "#fbfaff"
+secondaryBackgroundColor = "#f1ecff"
+textColor = "#24213a"
+borderColor = "#e3dcf7"
+showWidgetBorder = true
+baseRadius = "14px"
+buttonRadius = "full"
+font = "sans-serif"
+dataframeHeaderBackgroundColor = "#f1ecff"
 
 [server]
 runOnSave = false

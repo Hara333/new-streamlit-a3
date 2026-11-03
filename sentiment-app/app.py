@@ -473,19 +473,41 @@ def network_figure(meta, model, res):
 
 
 # ---------- page ----------
-cat = catalog()
-st.title("Sentiment prediction")
-key = st.selectbox("Model", list(cat), format_func=lambda k: f"{cat[k]['name']} [{cat[k]['tag']}]")
-meta = cat[key]
-st.caption("Encoder: bge-large-en-v1.5, frozen, 2,048 values per text" if meta["encoder"] else "Encoder: none. This model reads the words themselves.")
-st.caption(f"{meta['caption']}. Percentages are accuracy on rows the model never trained on.")
+STYLE = """<style>
+.stApp { background: linear-gradient(160deg, #efe8ff 0%, #f8f6ff 35%, #fdfcff 60%, #e8f1ff 100%); background-attachment: fixed; }
+.stApp header[data-testid="stHeader"] { background: transparent; }
+.stApp h1 { background: linear-gradient(90deg, #6d3cf0 0%, #b5179e 55%, #3a7bfd 100%); -webkit-background-clip: text; background-clip: text;
+            color: transparent; font-weight: 800; letter-spacing: -0.02em; padding-bottom: 0.1rem; }
+.hero-sub { color: #5d5873; margin: -0.6rem 0 1.4rem; font-size: 1.02rem; }
+.st-key-card_input, .st-key-card_result, .st-key-card_more {
+    background: rgba(255, 255, 255, 0.82); border: 1px solid rgba(124, 77, 245, 0.14) !important; border-radius: 22px !important;
+    box-shadow: 0 10px 30px -12px rgba(76, 40, 170, 0.22); padding: 1.3rem 1.4rem 1.1rem; backdrop-filter: blur(6px); }
+.st-key-card_result { border-top: 4px solid transparent !important;
+    background: linear-gradient(#ffffff, #ffffff) padding-box, linear-gradient(90deg, #7c4df5, #c026d3, #3a7bfd) border-box; }
+.st-key-predict button { background: linear-gradient(90deg, #7c4df5 0%, #b5179e 100%); border: none; border-radius: 999px;
+    padding: 0.5rem 2.2rem; font-weight: 600; box-shadow: 0 6px 18px -6px rgba(124, 77, 245, 0.6); transition: transform .15s, box-shadow .15s; }
+.st-key-predict button:hover { transform: translateY(-1px); box-shadow: 0 10px 22px -6px rgba(124, 77, 245, 0.7); color: white; }
+.stTextArea textarea, .stSelectbox [data-baseweb="select"] > div { border-radius: 14px !important; }
+[data-testid="stMetric"] { background: linear-gradient(135deg, #f4efff 0%, #eef4ff 100%); border-radius: 16px; padding: 0.8rem 1.1rem; }
+[data-testid="stDataFrame"] { border-radius: 14px; overflow: hidden; }
+</style>"""
 
-sentence = st.text_area("Sentence", placeholder="e.g. Shares jumped after the company beat earnings forecasts.", height=100)
-if st.button("Predict", type="primary"):
-    if not sentence.strip():
-        st.warning("Type a sentence first.")
-    else:
-        st.session_state["sentence"] = sentence.strip()
+cat = catalog()
+st.html(STYLE)
+st.title("Sentiment prediction")
+st.html('<p class="hero-sub">Pick one of fourteen models, type a sentence and see how it reads it.</p>')
+
+with st.container(border=True, key="card_input"):
+    key = st.selectbox("Model", list(cat), format_func=lambda k: f"{cat[k]['name']} [{cat[k]['tag']}]")
+    meta = cat[key]
+    st.caption("Encoder: bge-large-en-v1.5, frozen, 2,048 values per text" if meta["encoder"] else "Encoder: none. This model reads the words themselves.")
+    st.caption(f"{meta['caption']}. Percentages are accuracy on rows the model never trained on.")
+    sentence = st.text_area("Sentence", placeholder="e.g. Shares jumped after the company beat earnings forecasts.", height=100)
+    if st.button("Predict", type="primary", key="predict"):
+        if not sentence.strip():
+            st.warning("Type a sentence first.")
+        else:
+            st.session_state["sentence"] = sentence.strip()
 
 text = st.session_state.get("sentence")
 res, n_tokens, n_windows = None, 0, 0
@@ -503,39 +525,41 @@ if text:
         res = run_words(model, meta, clean(text))
 
 if res is not None:
-    st.subheader("Result")
-    if text != sentence.strip():
-        st.caption(f'Result for: "{text}"')
-    show_reading(meta, res)
-    if st.toggle("Show the calculation", key="calculation"):
-        if meta["kind"] == "words":
-            show_word_calculation(meta, model, res)
-        else:
-            show_network_calculation(meta, model, res, n_tokens, n_windows)
+    with st.container(border=True, key="card_result"):
+        st.subheader("Result")
+        if text != sentence.strip():
+            st.caption(f'Result for: "{text}"')
+        show_reading(meta, res)
+        if st.toggle("Show the calculation", key="calculation"):
+            if meta["kind"] == "words":
+                show_word_calculation(meta, model, res)
+            else:
+                show_network_calculation(meta, model, res, n_tokens, n_windows)
 
-if st.toggle("Model details", key="details"):
-    for section in meta["details"]:
-        st.markdown(f"**{section['title']}**")
-        st.markdown("\n".join(f"- {a}: {b}" for a, b in section["rows"]))
-    c = meta.get("curve")
-    if c:
-        fig = go.Figure(go.Scatter(x=c["x"], y=c["y"], mode="lines+markers" if len(c["x"]) < 40 else "lines", line=dict(color=ACCENT)))
-        fig.update_layout(title=dict(text=c["title"], font=dict(size=14)), height=260, margin=dict(l=10, r=10, t=40, b=10),
-                          xaxis_title=c["xlabel"], yaxis_title=c["ylabel"])
-        st.plotly_chart(fig, width="stretch")
+with st.container(border=True, key="card_more"):
+    if st.toggle("Model details", key="details"):
+        for section in meta["details"]:
+            st.markdown(f"**{section['title']}**")
+            st.markdown("\n".join(f"- {a}: {b}" for a, b in section["rows"]))
+        c = meta.get("curve")
+        if c:
+            fig = go.Figure(go.Scatter(x=c["x"], y=c["y"], mode="lines+markers" if len(c["x"]) < 40 else "lines", line=dict(color=ACCENT)))
+            fig.update_layout(title=dict(text=c["title"], font=dict(size=14)), height=260, margin=dict(l=10, r=10, t=40, b=10),
+                              xaxis_title=c["xlabel"], yaxis_title=c["ylabel"])
+            st.plotly_chart(fig, width="stretch")
 
-if res is not None and meta["acts"]:
-    if st.toggle("Draw the network for this sentence", key="network"):
-        st.caption("Circles: the units that carried most of this answer, traced back from the outputs (twelve inputs, ten units per hidden layer), "
-                   "highest value at the top, purple positive and red negative. Lines: the three strongest weight x value contributions into each "
-                   "circle, purple pushing it up and red pushing it down, thicker for larger. The bar under each column is every unit of that layer "
-                   "for this sentence, sorted from lowest to highest. Hover for the numbers.")
-        st.plotly_chart(network_figure(meta, model, res), width="stretch")
+    if res is not None and meta["acts"]:
+        if st.toggle("Draw the network for this sentence", key="network"):
+            st.caption("Circles: the units that carried most of this answer, traced back from the outputs (twelve inputs, ten units per hidden layer), "
+                       "highest value at the top, purple positive and red negative. Lines: the three strongest weight x value contributions into each "
+                       "circle, purple pushing it up and red pushing it down, thicker for larger. The bar under each column is every unit of that layer "
+                       "for this sentence, sorted from lowest to highest. Hover for the numbers.")
+            st.plotly_chart(network_figure(meta, model, res), width="stretch")
 
-if res is not None and meta["encoder"]:
-    if st.toggle("Show the [CLS] values", key="cls_values"):
-        half = len(res["x"]) // 2
-        cls = res["x"][:half]
-        st.caption(f"The first {half:,} of the encoder's {len(res['x']):,} values: the vector bge-large gives at its [CLS] token, its summary of the whole text "
-                   f"(averaged by length when a long text is read in several windows). Range {cls.min():.3f} to {cls.max():.3f}, length {np.linalg.norm(cls):.2f}.")
-        table({"position": np.arange(half), "value": np.round(cls, 5)}, rows=12)
+    if res is not None and meta["encoder"]:
+        if st.toggle("Show the [CLS] values", key="cls_values"):
+            half = len(res["x"]) // 2
+            cls = res["x"][:half]
+            st.caption(f"The first {half:,} of the encoder's {len(res['x']):,} values: the vector bge-large gives at its [CLS] token, its summary of the whole text "
+                       f"(averaged by length when a long text is read in several windows). Range {cls.min():.3f} to {cls.max():.3f}, length {np.linalg.norm(cls):.2f}.")
+            table({"position": np.arange(half), "value": np.round(cls, 5)}, rows=12)
