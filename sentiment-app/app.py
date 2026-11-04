@@ -23,6 +23,8 @@ HERE = Path(__file__).resolve().parent
 MODELS = HERE / "models"
 ENCODER = os.environ.get("SENTIMENT_ENCODER", "BAAI/bge-large-en-v1.5")  # a local folder with the weights also works
 MAX_LEN, OVERLAP = 512, 32
+POWERBI_LINK = re.compile(r"https://app\.powerbi\.com/\S+$")
+POWERBI_HEIGHT = 640
 
 SENTIMENT = ["negative", "neutral", "positive"]
 SENT_COL = {"negative": "#e5484d", "neutral": "#8b5cf6", "positive": "#1f9d55"}
@@ -479,7 +481,7 @@ STYLE = """<style>
 .stApp h1 { background: linear-gradient(90deg, #6d3cf0 0%, #b5179e 55%, #3a7bfd 100%); -webkit-background-clip: text; background-clip: text;
             color: transparent; font-weight: 800; letter-spacing: -0.02em; padding-bottom: 0.1rem; }
 .hero-sub { color: #5d5873; margin: -0.6rem 0 1.4rem; font-size: 1.02rem; }
-.st-key-card_input, .st-key-card_result, .st-key-card_more {
+.st-key-card_input, .st-key-card_result, .st-key-card_more, .st-key-card_powerbi {
     background: rgba(255, 255, 255, 0.82); border: 1px solid rgba(124, 77, 245, 0.14) !important; border-radius: 22px !important;
     box-shadow: 0 10px 30px -12px rgba(76, 40, 170, 0.22); padding: 1.3rem 1.4rem 1.1rem; backdrop-filter: blur(6px); }
 .st-key-card_result { border-top: 4px solid transparent !important;
@@ -490,76 +492,103 @@ STYLE = """<style>
 .stTextArea textarea, .stSelectbox [data-baseweb="select"] > div { border-radius: 14px !important; }
 [data-testid="stMetric"] { background: linear-gradient(135deg, #f4efff 0%, #eef4ff 100%); border-radius: 16px; padding: 0.8rem 1.1rem; }
 [data-testid="stDataFrame"] { border-radius: 14px; overflow: hidden; }
+.stTabs [role="tablist"] { gap: 0.4rem; border: none; background: rgba(255, 255, 255, 0.7); border-radius: 999px; padding: 0.3rem; width: fit-content;
+    box-shadow: 0 4px 14px -8px rgba(76, 40, 170, 0.3); margin-bottom: 0.8rem; }
+.stTabs [data-testid="stTab"] { border-radius: 999px; padding: 0.4rem 1.3rem; height: auto; }
+.stTabs [data-testid="stTab"][aria-selected="true"] { background: linear-gradient(90deg, #7c4df5 0%, #b5179e 100%); }
+.stTabs [data-testid="stTab"][aria-selected="true"] p { color: white; font-weight: 600; }
+.stTabs .react-aria-SelectionIndicator { display: none; }
+.stTabs [role="tablist"], .stTabs [role="tablist"] * { box-shadow: none; }
+.stTabs [role="tablist"] { box-shadow: 0 4px 14px -8px rgba(76, 40, 170, 0.3); }
+.stTabs [role="tablist"]::after, .stTabs [role="tablist"]::before { display: none; }
+.st-key-card_powerbi iframe { border-radius: 16px; border: 1px solid #e3dcf7; }
 </style>"""
 
 cat = catalog()
 st.html(STYLE)
 st.title("Sentiment prediction")
 st.html('<p class="hero-sub">Pick one of fourteen models, type a sentence and see how it reads it.</p>')
+tab_predict, tab_powerbi = st.tabs(["Prediction", "Power BI"])
 
-with st.container(border=True, key="card_input"):
-    key = st.selectbox("Model", list(cat), format_func=lambda k: f"{cat[k]['name']} [{cat[k]['tag']}]")
-    meta = cat[key]
-    st.caption("Encoder: bge-large-en-v1.5, frozen, 2,048 values per text" if meta["encoder"] else "Encoder: none. This model reads the words themselves.")
-    st.caption(f"{meta['caption']}. Percentages are accuracy on rows the model never trained on.")
-    sentence = st.text_area("Sentence", placeholder="e.g. Shares jumped after the company beat earnings forecasts.", height=100)
-    if st.button("Predict", type="primary", key="predict"):
-        if not sentence.strip():
-            st.warning("Type a sentence first.")
-        else:
-            st.session_state["sentence"] = sentence.strip()
-
-text = st.session_state.get("sentence")
-res, n_tokens, n_windows = None, 0, 0
-if text:
-    model = load_model(key)
-    if meta["encoder"]:
-        try:
-            with st.spinner("Encoding with bge-large (the first run downloads it, about 1.3 GB) ..."):
-                x, n_tokens, n_windows = encode(clean(text))
-        except OSError as e:
-            st.error(f"The encoder could not be loaded: {e}")
-        else:
-            res = run_head(model, meta, x)
-    else:
-        res = run_words(model, meta, clean(text))
-
-if res is not None:
-    with st.container(border=True, key="card_result"):
-        st.subheader("Result")
-        if text != sentence.strip():
-            st.caption(f'Result for: "{text}"')
-        show_reading(meta, res)
-        if st.toggle("Show the calculation", key="calculation"):
-            if meta["kind"] == "words":
-                show_word_calculation(meta, model, res)
+with tab_predict:
+    with st.container(border=True, key="card_input"):
+        key = st.selectbox("Model", list(cat), format_func=lambda k: f"{cat[k]['name']} [{cat[k]['tag']}]")
+        meta = cat[key]
+        st.caption("Encoder: bge-large-en-v1.5, frozen, 2,048 values per text" if meta["encoder"] else "Encoder: none. This model reads the words themselves.")
+        st.caption(f"{meta['caption']}. Percentages are accuracy on rows the model never trained on.")
+        sentence = st.text_area("Sentence", placeholder="e.g. Shares jumped after the company beat earnings forecasts.", height=100)
+        if st.button("Predict", type="primary", key="predict"):
+            if not sentence.strip():
+                st.warning("Type a sentence first.")
             else:
-                show_network_calculation(meta, model, res, n_tokens, n_windows)
+                st.session_state["sentence"] = sentence.strip()
 
-with st.container(border=True, key="card_more"):
-    if st.toggle("Model details", key="details"):
-        for section in meta["details"]:
-            st.markdown(f"**{section['title']}**")
-            st.markdown("\n".join(f"- {a}: {b}" for a, b in section["rows"]))
-        c = meta.get("curve")
-        if c:
-            fig = go.Figure(go.Scatter(x=c["x"], y=c["y"], mode="lines+markers" if len(c["x"]) < 40 else "lines", line=dict(color=ACCENT)))
-            fig.update_layout(title=dict(text=c["title"], font=dict(size=14)), height=260, margin=dict(l=10, r=10, t=40, b=10),
-                              xaxis_title=c["xlabel"], yaxis_title=c["ylabel"])
-            st.plotly_chart(fig, width="stretch")
+    text = st.session_state.get("sentence")
+    res, n_tokens, n_windows = None, 0, 0
+    if text:
+        model = load_model(key)
+        if meta["encoder"]:
+            try:
+                with st.spinner("Encoding with bge-large (the first run downloads it, about 1.3 GB) ..."):
+                    x, n_tokens, n_windows = encode(clean(text))
+            except OSError as e:
+                st.error(f"The encoder could not be loaded: {e}")
+            else:
+                res = run_head(model, meta, x)
+        else:
+            res = run_words(model, meta, clean(text))
 
-    if res is not None and meta["acts"]:
-        if st.toggle("Draw the network for this sentence", key="network"):
-            st.caption("Circles: the units that carried most of this answer, traced back from the outputs (twelve inputs, ten units per hidden layer), "
-                       "highest value at the top, purple positive and red negative. Lines: the three strongest weight x value contributions into each "
-                       "circle, purple pushing it up and red pushing it down, thicker for larger. The bar under each column is every unit of that layer "
-                       "for this sentence, sorted from lowest to highest. Hover for the numbers.")
-            st.plotly_chart(network_figure(meta, model, res), width="stretch")
+    if res is not None:
+        with st.container(border=True, key="card_result"):
+            st.subheader("Result")
+            if text != sentence.strip():
+                st.caption(f'Result for: "{text}"')
+            show_reading(meta, res)
+            if st.toggle("Show the calculation", key="calculation"):
+                if meta["kind"] == "words":
+                    show_word_calculation(meta, model, res)
+                else:
+                    show_network_calculation(meta, model, res, n_tokens, n_windows)
 
-    if res is not None and meta["encoder"]:
-        if st.toggle("Show the [CLS] values", key="cls_values"):
-            half = len(res["x"]) // 2
-            cls = res["x"][:half]
-            st.caption(f"The first {half:,} of the encoder's {len(res['x']):,} values: the vector bge-large gives at its [CLS] token, its summary of the whole text "
-                       f"(averaged by length when a long text is read in several windows). Range {cls.min():.3f} to {cls.max():.3f}, length {np.linalg.norm(cls):.2f}.")
-            table({"position": np.arange(half), "value": np.round(cls, 5)}, rows=12)
+    with st.container(border=True, key="card_more"):
+        if st.toggle("Model details", key="details"):
+            for section in meta["details"]:
+                st.markdown(f"**{section['title']}**")
+                st.markdown("\n".join(f"- {a}: {b}" for a, b in section["rows"]))
+            c = meta.get("curve")
+            if c:
+                fig = go.Figure(go.Scatter(x=c["x"], y=c["y"], mode="lines+markers" if len(c["x"]) < 40 else "lines", line=dict(color=ACCENT)))
+                fig.update_layout(title=dict(text=c["title"], font=dict(size=14)), height=260, margin=dict(l=10, r=10, t=40, b=10),
+                                  xaxis_title=c["xlabel"], yaxis_title=c["ylabel"])
+                st.plotly_chart(fig, width="stretch")
+
+        if res is not None and meta["acts"]:
+            if st.toggle("Draw the network for this sentence", key="network"):
+                st.caption("Circles: the units that carried most of this answer, traced back from the outputs (twelve inputs, ten units per hidden layer), "
+                           "highest value at the top, purple positive and red negative. Lines: the three strongest weight x value contributions into each "
+                           "circle, purple pushing it up and red pushing it down, thicker for larger. The bar under each column is every unit of that layer "
+                           "for this sentence, sorted from lowest to highest. Hover for the numbers.")
+                st.plotly_chart(network_figure(meta, model, res), width="stretch")
+
+        if res is not None and meta["encoder"]:
+            if st.toggle("Show the [CLS] values", key="cls_values"):
+                half = len(res["x"]) // 2
+                cls = res["x"][:half]
+                st.caption(f"The first {half:,} of the encoder's {len(res['x']):,} values: the vector bge-large gives at its [CLS] token, its summary of the whole text "
+                           f"(averaged by length when a long text is read in several windows). Range {cls.min():.3f} to {cls.max():.3f}, length {np.linalg.norm(cls):.2f}.")
+                table({"position": np.arange(half), "value": np.round(cls, 5)}, rows=12)
+
+with tab_powerbi:
+    with st.container(border=True, key="card_powerbi"):
+        st.subheader("Power BI report")
+        url = st.text_input("Report link", value=os.environ.get("POWERBI_URL", ""), key="powerbi_url",
+                            placeholder="https://app.powerbi.com/view?r=...").strip()
+        if not url:
+            st.info("Paste a Power BI report link above to show the report here. In Power BI: open the report, then File > Embed report > "
+                    "Publish to web (public) for a link anyone can see, or Website or portal (secure) for one that asks viewers to sign in. "
+                    "To load it automatically, start the app with POWERBI_URL set to the link.")
+        elif not POWERBI_LINK.match(url):
+            st.error("That is not a Power BI link: it should start with https://app.powerbi.com/")
+        else:
+            st.iframe(url, height=POWERBI_HEIGHT, alt="Power BI report")
+            st.caption(f"[Open the report in Power BI]({url})")

@@ -99,7 +99,8 @@ class TestStoreAndCode:
 
     def test_nf_08_the_only_network_access_is_the_encoder_download(self):
         src = (APP_DIR / "app.py").read_text(encoding="utf-8")
-        assert "http" not in src.lower().replace("huggingface", "")
+        # besides the encoder, the only address is the Power BI one the tab checks links against; the viewer's browser loads that report, not the app
+        assert "http" not in src.lower().replace("huggingface", "").replace("https://app\\.powerbi\\.com/", "").replace("https://app.powerbi.com/", "")
         assert "requests" not in src and "urllib" not in src
 
     def test_nf_09_house_style_no_dashes_and_ascii_sources(self):

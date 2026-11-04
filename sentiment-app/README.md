@@ -42,6 +42,16 @@ The networks and linear heads read the 2,048 values of the frozen encoder (the [
 - **Draw the network for this sentence** (deep learning models only, at the bottom): the units that carried most of the answer and the strongest contributions between them. Nothing is computed until it is switched on.
 - **Show the [CLS] values** (models that use the encoder, last on the page): the 1,024 values of the [CLS] vector for this sentence.
 
+## Power BI tab
+
+The second tab shows a Power BI report inside the app. Paste the report's link in the tab, or start the app with it set so it loads on its own:
+
+```
+POWERBI_URL="https://app.powerbi.com/view?r=..." streamlit run app.py
+```
+
+In Power BI, File > Embed report > Publish to web gives a public link; Website or portal gives a secure one that asks viewers to sign in. Only links that start with https://app.powerbi.com/ are shown.
+
 ## Files
 
 ```

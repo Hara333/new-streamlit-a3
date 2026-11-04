@@ -111,6 +111,16 @@ class TestReadASentence:
         assert list(df.columns) == ["position", "value"] and list(df["position"]) == list(range(1024))
         assert any(c.value.startswith("The first 1,024 of the encoder's 2,048 values") for c in at.caption) and not at.exception
 
+    def test_st_u_06c_power_bi_tab_explains_rejects_and_embeds(self, apptest):
+        at = apptest
+        assert [t.label for t in at.tabs] == ["Prediction", "Power BI"]
+        assert any(i.value.startswith("Paste a Power BI report link") for i in at.info) and not at.get("iframe")
+        at.text_input(key="powerbi_url").input("https://example.com/report").run()
+        assert [e.value for e in at.error] == ["That is not a Power BI link: it should start with https://app.powerbi.com/"]
+        assert not at.get("iframe")
+        at.text_input(key="powerbi_url").input("https://app.powerbi.com/view?r=abc").run()
+        assert not at.error and len(at.get("iframe")) == 1 and not at.exception
+
     def test_st_u_07_switching_model_keeps_the_sentence_and_rereads_it(self, apptest):
         at = predict(apptest, "fingpt_network", SENTENCE)
         assert labels(at) == ["Sentiment"]
@@ -143,7 +153,7 @@ class TestWordModels:
     def test_st_u_11_an_unknown_word_is_reported_and_left_out(self, apptest):
         at = predict(apptest, "words_sentfin", UNKNOWN)
         # SEntFiN's vocabulary lacks "collapsed" and "resigned" as well, so three of the seven words are N/A
-        assert [i.value for i in at.info] == ["3 of 7 words are N/A (never seen in training) and add nothing; the reading rests on the other 4."]
+        assert [i.value for i in at.tabs[0].info] == ["3 of 7 words are N/A (never seen in training) and add nothing; the reading rests on the other 4."]
         table = at.dataframe[0].value
         rows = dict(zip(table["word"], table["trigger"]))
         assert rows["zzzunknownword"] == "N/A" and rows["collapsed"] == "N/A" and rows["profits"] != "N/A"
@@ -157,7 +167,7 @@ class TestWordModels:
 
     def test_st_u_12b_all_words_known_shows_the_sum_without_an_na_line(self, apptest):
         at = predict(apptest, "words_sentfin", "Shares fall as profit drops")
-        assert not at.info and not at.warning
+        assert not at.tabs[0].info and not at.warning
         at.toggle[0].set_value(True).run()
         assert not any(c.value.startswith("N/A, left out") for c in at.caption)
         assert list(at.dataframe[1].value["term"]) == ["intercept", "shares", "fall", "as", "profit", "drops", "score (sum)", "probability"]
